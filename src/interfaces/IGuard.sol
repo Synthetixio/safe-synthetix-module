@@ -6,7 +6,10 @@ import "./IERC165.sol";
 /// @title Enum - Collection of enums
 /// @author Richard Meissner - <richard@gnosis.pm>
 contract Enum {
-    enum Operation {Call, DelegateCall}
+    enum Operation {
+        Call,
+        DelegateCall
+    }
 }
 
 interface IGuard is IERC165 {

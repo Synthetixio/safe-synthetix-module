@@ -5,16 +5,11 @@ pragma solidity >=0.7.0 <0.9.0;
 /// @author Ricardo Guilherme Schmidt (Status Research & Development GmbH)
 /// @author Richard Meissner - <richard@gnosis.pm>
 contract SignatureDecoder {
-    
     /// @dev Recovers address who signed the message
     /// @param messageHash operation ethereum signed message hash
     /// @param messageSignature message `txHash` signature
     /// @param pos which signature to read
-    function recoverKey (
-        bytes32 messageHash,
-        bytes memory messageSignature,
-        uint256 pos
-    )
+    function recoverKey(bytes32 messageHash, bytes memory messageSignature, uint256 pos)
         internal
         pure
         returns (address)

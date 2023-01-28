@@ -1,28 +1,21 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity >=0.7.0 <0.9.0;
 
-import { Enum } from "./IGuard.sol";
+import {Enum} from "./IGuard.sol";
 
 interface ISafe {
     function getOwners() external view returns (address[] memory);
     function addOwnerWithThreshold(address owner, uint256 _threshold) external;
-    function removeOwner(
-        address prevOwner,
-        address owner,
-        uint256 _threshold
-    ) external;
-    function nonce() external returns (uint);
+    function removeOwner(address prevOwner, address owner, uint256 _threshold) external;
+    function nonce() external returns (uint256);
     function setGuard(address guard) external;
     function enableModule(address module) external;
     function isModuleEnabled(address module) external view returns (bool);
     function getThreshold() external view returns (uint256);
 
-    function execTransactionFromModule(
-        address to,
-        uint256 value,
-        bytes memory data,
-        Enum.Operation operation
-    ) external returns (bool success);
+    function execTransactionFromModule(address to, uint256 value, bytes memory data, Enum.Operation operation)
+        external
+        returns (bool success);
     function isOwner(address owner) external view returns (bool);
 
     function execTransaction(
