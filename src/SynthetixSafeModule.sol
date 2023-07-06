@@ -172,7 +172,13 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
         for (uint256 j = 0; j < signatures.length / 65; j++) {
             (v, r, s) = signatureSplit(signatures, j);
             if (v == 0) {
-                revert("Contract signatures are not supported by this module");
+                // If v is 0 then it is a contract signature
+                // When handling contract signatures the address of the contract is encoded into r
+                curOwner = address(uint160(uint256(r)));
+
+                // normally the safe contract would do a big internal memory signature verification here.
+                // however, we dont need to do all the signature verification stuff because that would have already been done
+                // by the safe contract
             } else if (v == 1) {
                 // v ==1 means that the sender is approving the txn, or its an approvedHash (which we are not going to deal with here)
                 curOwner = msgSender;
