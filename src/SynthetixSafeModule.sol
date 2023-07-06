@@ -17,14 +17,19 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
     // );
     bytes32 private constant DOMAIN_SEPARATOR_TYPEHASH =
         0x47e79534a245952e8b16893a336b85a3d9ea9fa8c573f3d803afb92a79469218;
+    
+    event PdaoThresholdChanged(uint256 threshold);
 
     // keccak256(
     //     "SafeTx(address to,uint256 value,bytes data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,uint256 nonce)"
     // );
     bytes32 private constant SAFE_TX_TYPEHASH = 0xbb8310d486368db6bd6f849402fdd73ad53d316b5a4b2644ad6efe0f941286d8;
 
+    error Unauthorized(address msgSender);
+    error InvalidParameter(bytes32 parameter, bytes32 reason);
     error SafeCallFailed(address safe, bytes attemptedCall);
     error InsufficientSigners(bytes32 group, uint256 required, uint256 provided);
+    error IncorrectSignature(uint8 v, bytes32 r, bytes32 s);
 
     IElectionModule public electionSystem;
 
@@ -39,9 +44,17 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
     }
 
     function setPdaoThreshold(uint256 threshold) external {
-        require(msg.sender == address(pdaoSafe), "pdao only");
+        if (msg.sender != address(pdaoSafe)) {
+            revert Unauthorized(msg.sender);
+        }
+
+        if (pdaoThreshold > pdaoSafe.getThreshold()) {
+            revert InvalidParameter("threshold", "greater than pdao safe threshold");
+        }
 
         pdaoThreshold = threshold;
+
+        emit PdaoThresholdChanged(threshold);
     }
 
     /**
@@ -117,7 +130,7 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
         address payable refundReceiver,
         bytes memory signatures,
         address msgSender
-    ) external {
+    ) external view {
         bytes memory txHashData;
         {
             txHashData = ISafe(msg.sender).encodeTransactionData(
@@ -165,7 +178,9 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
                 curOwner = ecrecover(keccak256(txHashData), v, r, s);
             }
             // 0 for the recovered owner indicates that an error happened.
-            require(curOwner != address(0), "curOwner != address(0)");
+            if (curOwner == address(0)) {
+                revert IncorrectSignature(v, r, s);
+            }
 
             if (electedCount < electedCouncilSigners.length / 2 + 1) {
                 for (uint256 i = 0; i < electedCouncilSigners.length; i++) {
@@ -191,7 +206,7 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
         }
 
         if (pdaoCount < pdaoThreshold) {
-            revert InsufficientSigners("council", pdaoThreshold, pdaoCount);
+            revert InsufficientSigners("pdao", pdaoThreshold, pdaoCount);
         }
     }
 

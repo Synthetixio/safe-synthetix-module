@@ -7,7 +7,7 @@ interface ISafe {
     function getOwners() external view returns (address[] memory);
     function addOwnerWithThreshold(address owner, uint256 _threshold) external;
     function removeOwner(address prevOwner, address owner, uint256 _threshold) external;
-    function nonce() external returns (uint256);
+    function nonce() external view returns (uint256);
     function setGuard(address guard) external;
     function enableModule(address module) external;
     function isModuleEnabled(address module) external view returns (bool);

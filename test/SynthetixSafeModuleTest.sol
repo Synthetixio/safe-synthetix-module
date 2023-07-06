@@ -134,7 +134,7 @@ contract SynthetixSafeModuleTest is Test {
         );
     }
 
-    function arrayContains(address[] memory list, address target) internal returns (bool) {
+    function arrayContains(address[] memory list, address target) internal pure returns (bool) {
         for (uint256 i = 0; i < list.length; i++) {
             if (list[i] == target) {
                 return true;
@@ -144,7 +144,7 @@ contract SynthetixSafeModuleTest is Test {
         return false;
     }
 
-    function arrayConcat(uint256[] memory l1, uint256[] memory l2) internal returns (uint256[] memory concatted) {
+    function arrayConcat(uint256[] memory l1, uint256[] memory l2) internal pure returns (uint256[] memory concatted) {
         concatted = new uint[](l1.length + l2.length);
         for (uint256 i = 0; i < l1.length; i++) {
             concatted[i] = l1[i];
@@ -156,7 +156,7 @@ contract SynthetixSafeModuleTest is Test {
     }
 
     function arraySlice(uint256[] memory l1, uint256 start, uint256 length)
-        internal
+        internal pure
         returns (uint256[] memory sliced)
     {
         sliced = new uint[](length);
@@ -165,7 +165,7 @@ contract SynthetixSafeModuleTest is Test {
         }
     }
 
-    function makeIncreasingArray(address start, uint256 count) internal returns (address[] memory) {
+    function makeIncreasingArray(address start, uint256 count) internal pure returns (address[] memory) {
         address[] memory d = new address[](count);
         for (uint160 i = 0; i < count; i++) {
             d[i] = address(uint160(start) + i);
@@ -174,7 +174,7 @@ contract SynthetixSafeModuleTest is Test {
         return d;
     }
 
-    function makeSignersArray(uint32 start, uint256 count) internal returns (uint256[] memory privKeys) {
+    function makeSignersArray(uint32 start, uint256 count) internal pure returns (uint256[] memory privKeys) {
         string memory mnemonic = "test test test test test test test test test test test junk";
         uint256[] memory d = new uint[](count);
         for (uint32 i = 0; i < count; i++) {
@@ -184,7 +184,7 @@ contract SynthetixSafeModuleTest is Test {
         return d;
     }
 
-    function getAddrsFromSigners(uint256[] memory privateKeys) internal returns (address[] memory addrs) {
+    function getAddrsFromSigners(uint256[] memory privateKeys) internal pure returns (address[] memory addrs) {
         addrs = new address[](privateKeys.length);
         for (uint256 i = 0; i < privateKeys.length; i++) {
             addrs[i] = vm.addr(privateKeys[i]);
@@ -258,7 +258,7 @@ contract SynthetixSafeModuleTest is Test {
         );
     }
 
-    function signatureStore(bytes memory signatures, uint256 pos, uint256 key, bytes32 h) internal {
+    function signatureStore(bytes memory signatures, uint256 pos, uint256 key, bytes32 h) internal pure {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, h);
         // The signature format is a compact form of:
         //   {bytes32 r}{bytes32 s}{uint8 v}
