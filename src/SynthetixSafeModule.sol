@@ -64,10 +64,14 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
      */
     function resetSafeSigners(ISafe targetSafe) external {
         // get the actual signers to set
-        address[] memory electedCouncilSigners = electionSystem.getCouncilMembers();
-        address[] memory pdaoSigners = pdaoSafe.getOwners();
+        (
+            address[] memory electedCouncilSigners, 
+            uint256 electedCouncilThreshold, 
+            address[] memory pdaoSigners, 
+            uint256 pdaoThresh
+        ) = getSignerInfo();
 
-        uint256 requiredSigners = electedCouncilSigners.length / 2 + 1 + pdaoThreshold;
+        uint256 requiredSigners = electedCouncilThreshold + pdaoThresh;
 
         // remove all signers currently on the target safe except one (because gnosis does not allow no signers)
         address[] memory oldSigners = targetSafe.getOwners();
@@ -150,8 +154,12 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
             );
         }
 
-        address[] memory electedCouncilSigners = electionSystem.getCouncilMembers();
-        address[] memory pdaoSigners = pdaoSafe.getOwners();
+        (
+            address[] memory electedCouncilSigners, 
+            uint256 electedCouncilThreshold, 
+            address[] memory pdaoSigners, 
+            uint256 pdaoThresh
+        ) = getSignerInfo();
 
         uint256 electedCount = 0;
         uint256 pdaoCount = 0;
@@ -201,11 +209,11 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
             }
         }
 
-        if (electedCount < electedCouncilSigners.length / 2 + 1) {
+        if (electedCount < electedCouncilThreshold) {
             revert InsufficientSigners("council", electedCouncilSigners.length / 2 + 1, electedCount);
         }
 
-        if (pdaoCount < pdaoThreshold) {
+        if (pdaoCount < pdaoThresh) {
             revert InsufficientSigners("pdao", pdaoThreshold, pdaoCount);
         }
     }
@@ -227,6 +235,14 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
             id := chainid()
         }
         return id;
+    }
+
+    function getSignerInfo() internal view returns (address[] memory electedCouncilSigners, uint256 electedCouncilThreshold, address[] memory pdaoSigners, uint256 pdaoThres) {
+        electedCouncilSigners = electionSystem.getCouncilMembers();
+        pdaoSigners = pdaoSafe.getOwners();
+        
+        electedCouncilThreshold = electedCouncilSigners.length / 2 + 1;
+        pdaoThres = pdaoThreshold;
     }
 
     function execOnSafe(ISafe safe, bytes memory call) internal {
