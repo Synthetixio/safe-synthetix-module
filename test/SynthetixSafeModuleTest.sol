@@ -14,19 +14,42 @@ contract SynthetixSafeModuleTest is Test {
     ISafe pdaoSafe;
     ISafe safe;
 
+    event PdaoThresholdChanged(uint256 threshold);
+
     function setUp() public {
         module = SynthetixSafeModule(vm.getAddress("SynthetixSafeModule"));
         safe = ISafe(vm.getAddress("target_safe.Safe"));
         pdaoSafe = ISafe(vm.getAddress("pdao_safe.Safe"));
     }
 
-    function testInitialState() public {
+    function testInitialState() public view {
         assert(safe.getThreshold() > 0);
         assert(safe.isModuleEnabled(address(module)));
     }
 
     function testFailSetPdaoThresholdRequiresOwner() public {
-        module.setPdaoThreshold(3);
+        module.setPdaoThreshold(1);
+    }
+
+    function testFailSetPdaoThresholdTooHigh() public {
+        vm.startPrank(address(pdaoSafe));
+        module.setPdaoThreshold(100);
+        vm.stopPrank();
+    }
+
+    function testSetPdaoThreshold() public {
+        vm.startPrank(address(pdaoSafe));
+        vm.expectEmit();
+
+        // We emit the event we expect to see.
+        emit PdaoThresholdChanged(1);
+
+        module.setPdaoThreshold(1);
+        vm.stopPrank();
+
+        assertEq(module.pdaoThreshold(), 1);
+
+
     }
 
     function testResetSafeSigners(address pdaoStart, address councilStart, uint256 pdaoCount, uint256 councilCount)

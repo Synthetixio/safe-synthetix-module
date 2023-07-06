@@ -48,7 +48,7 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
             revert Unauthorized(msg.sender);
         }
 
-        if (pdaoThreshold > pdaoSafe.getThreshold()) {
+        if (threshold > pdaoSafe.getThreshold()) {
             revert InvalidParameter("threshold", "greater than pdao safe threshold");
         }
 
