@@ -17,7 +17,7 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
     // );
     bytes32 private constant DOMAIN_SEPARATOR_TYPEHASH =
         0x47e79534a245952e8b16893a336b85a3d9ea9fa8c573f3d803afb92a79469218;
-    
+
     event PdaoThresholdChanged(uint256 threshold);
 
     // keccak256(
@@ -29,7 +29,8 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
     error InvalidParameter(bytes32 parameter, bytes32 reason);
     error SafeCallFailed(address safe, bytes attemptedCall);
     error InsufficientSigners(bytes32 group, uint256 required, uint256 provided);
-    error IncorrectSignature(uint8 v, bytes32 r, bytes32 s);
+    error IncorrectSignature(address curOwner, uint8 v, bytes32 r, bytes32 s);
+    error ContractSignaturesUnsupported();
 
     IElectionModule public electionSystem;
 
@@ -65,9 +66,9 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
     function resetSafeSigners(ISafe targetSafe) external {
         // get the actual signers to set
         (
-            address[] memory electedCouncilSigners, 
-            uint256 electedCouncilThreshold, 
-            address[] memory pdaoSigners, 
+            address[] memory electedCouncilSigners,
+            uint256 electedCouncilThreshold,
+            address[] memory pdaoSigners,
             uint256 pdaoThresh
         ) = getSignerInfo();
 
@@ -155,9 +156,9 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
         }
 
         (
-            address[] memory electedCouncilSigners, 
-            uint256 electedCouncilThreshold, 
-            address[] memory pdaoSigners, 
+            address[] memory electedCouncilSigners,
+            uint256 electedCouncilThreshold,
+            address[] memory pdaoSigners,
             uint256 pdaoThresh
         ) = getSignerInfo();
 
@@ -167,18 +168,13 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
         uint8 v;
         bytes32 r;
         bytes32 s;
+        address lastOwner;
         address curOwner;
 
         for (uint256 j = 0; j < signatures.length / 65; j++) {
             (v, r, s) = signatureSplit(signatures, j);
             if (v == 0) {
-                // If v is 0 then it is a contract signature
-                // When handling contract signatures the address of the contract is encoded into r
-                curOwner = address(uint160(uint256(r)));
-
-                // normally the safe contract would do a big internal memory signature verification here.
-                // however, we dont need to do all the signature verification stuff because that would have already been done
-                // by the safe contract
+                revert ContractSignaturesUnsupported();
             } else if (v == 1) {
                 // v ==1 means that the sender is approving the txn, or its an approvedHash (which we are not going to deal with here)
                 curOwner = msgSender;
@@ -191,9 +187,10 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
                 // Use ecrecover with the messageHash for EOA signatures
                 curOwner = ecrecover(keccak256(txHashData), v, r, s);
             }
+
             // 0 for the recovered owner indicates that an error happened.
-            if (curOwner == address(0)) {
-                revert IncorrectSignature(v, r, s);
+            if (curOwner <= lastOwner || curOwner == address(0)) {
+                revert IncorrectSignature(curOwner, v, r, s);
             }
 
             if (electedCount < electedCouncilSigners.length / 2 + 1) {
@@ -213,6 +210,8 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
                     }
                 }
             }
+
+            lastOwner = curOwner;
         }
 
         if (electedCount < electedCouncilThreshold) {
@@ -243,10 +242,19 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
         return id;
     }
 
-    function getSignerInfo() internal view returns (address[] memory electedCouncilSigners, uint256 electedCouncilThreshold, address[] memory pdaoSigners, uint256 pdaoThres) {
+    function getSignerInfo()
+        internal
+        view
+        returns (
+            address[] memory electedCouncilSigners,
+            uint256 electedCouncilThreshold,
+            address[] memory pdaoSigners,
+            uint256 pdaoThres
+        )
+    {
         electedCouncilSigners = electionSystem.getCouncilMembers();
         pdaoSigners = pdaoSafe.getOwners();
-        
+
         electedCouncilThreshold = electedCouncilSigners.length / 2 + 1;
         pdaoThres = pdaoThreshold;
     }

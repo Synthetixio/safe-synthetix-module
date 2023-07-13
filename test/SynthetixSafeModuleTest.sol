@@ -48,8 +48,6 @@ contract SynthetixSafeModuleTest is Test {
         vm.stopPrank();
 
         assertEq(module.pdaoThreshold(), 1);
-
-
     }
 
     function testResetSafeSigners(address pdaoStart, address councilStart, uint256 pdaoCount, uint256 councilCount)
@@ -179,7 +177,8 @@ contract SynthetixSafeModuleTest is Test {
     }
 
     function arraySlice(uint256[] memory l1, uint256 start, uint256 length)
-        internal pure
+        internal
+        pure
         returns (uint256[] memory sliced)
     {
         sliced = new uint[](length);
