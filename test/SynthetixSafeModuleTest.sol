@@ -14,7 +14,7 @@ contract SynthetixSafeModuleTest is Test {
     ISafe pdaoSafe;
     ISafe safe;
 
-    event PdaoThresholdChanged(uint256 threshold);
+    event VetoThresholdChanged(uint256 threshold);
 
     function setUp() public {
         module = SynthetixSafeModule(vm.getAddress("SynthetixSafeModule"));
@@ -27,34 +27,34 @@ contract SynthetixSafeModuleTest is Test {
         assert(safe.isModuleEnabled(address(module)));
     }
 
-    function testFailSetPdaoThresholdRequiresOwner() public {
-        module.setPdaoThreshold(1);
+    function testFailSetVetoThresholdRequiresOwner() public {
+        module.setVetoThreshold(1);
     }
 
-    function testFailSetPdaoThresholdTooHigh() public {
+    function testFailSetVetoThresholdTooHigh() public {
         vm.startPrank(address(pdaoSafe));
-        module.setPdaoThreshold(100);
+        module.setVetoThreshold(100);
         vm.stopPrank();
     }
 
-    function testSetPdaoThreshold() public {
+    function testSetVetoThreshold() public {
         vm.startPrank(address(pdaoSafe));
         vm.expectEmit();
 
         // We emit the event we expect to see.
-        emit PdaoThresholdChanged(1);
+        emit VetoThresholdChanged(1);
 
-        module.setPdaoThreshold(1);
+        module.setVetoThreshold(1);
         vm.stopPrank();
 
-        assertEq(module.pdaoThreshold(), 1);
+        assertEq(module.vetoThreshold(), 1);
     }
 
     function testResetSafeSigners(address pdaoStart, address councilStart, uint256 pdaoCount, uint256 councilCount)
         public
     {
         pdaoCount = bound(pdaoCount, 1, 20);
-        councilCount = bound(councilCount, 0, 20); // council can have 0 elected signers--in which caes the pdao is only controller
+        councilCount = bound(councilCount, 1, 20); // council can have 0 elected signers--in which caes the pdao is only controller
         vm.assume(pdaoStart > address(0x1)); // must be greater than gnosis safe sentinel address
         vm.assume(councilStart > address(0x1));
 
@@ -89,7 +89,7 @@ contract SynthetixSafeModuleTest is Test {
         }
 
         // assert that the correct number of signers are required
-        assertEq(safe.getThreshold(), councilCount / 2 + 1 + module.pdaoThreshold());
+        assertEq(safe.getThreshold(), pdaoCount / 2 + 1 + module.vetoThreshold());
     }
 
     function testCheckTransactionFull() public {
@@ -110,8 +110,8 @@ contract SynthetixSafeModuleTest is Test {
     }
 
     function testCheckTransactionMinSigs() public {
-        uint256[] memory pdaoPrivateKeys = makeSignersArray(1234, 10);
-        uint256[] memory councilPrivateKeys = makeSignersArray(6789, 9);
+        uint256[] memory pdaoPrivateKeys = makeSignersArray(1234, 9);
+        uint256[] memory councilPrivateKeys = makeSignersArray(6789, 10);
         makeBasicSafeConfig(getAddrsFromSigners(pdaoPrivateKeys), getAddrsFromSigners(councilPrivateKeys));
 
         address addrToRemove = vm.addr(councilPrivateKeys[councilPrivateKeys.length - 1]);
@@ -125,7 +125,7 @@ contract SynthetixSafeModuleTest is Test {
         assert(!safe.isOwner(addrToRemove));
     }
 
-    function testFailCheckTransactionWithInsufficientPdaoSigners() public {
+    function testFailCheckTransactionWithInsufficientVetoSigners() public {
         uint256[] memory pdaoPrivateKeys = makeSignersArray(1234, 10);
         uint256[] memory councilPrivateKeys = makeSignersArray(6789, 10);
         makeBasicSafeConfig(getAddrsFromSigners(pdaoPrivateKeys), getAddrsFromSigners(councilPrivateKeys));

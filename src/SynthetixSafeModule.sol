@@ -18,7 +18,7 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
     bytes32 private constant DOMAIN_SEPARATOR_TYPEHASH =
         0x47e79534a245952e8b16893a336b85a3d9ea9fa8c573f3d803afb92a79469218;
 
-    event PdaoThresholdChanged(uint256 threshold);
+    event VetoThresholdChanged(uint256 threshold);
 
     // keccak256(
     //     "SafeTx(address to,uint256 value,bytes data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,uint256 nonce)"
@@ -32,47 +32,48 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
     error IncorrectSignature(address curOwner, uint8 v, bytes32 r, bytes32 s);
     error ContractSignaturesUnsupported();
 
-    IElectionModule public electionSystem;
+    IElectionModule public vetoElectionSystem;
 
-    ISafe public pdaoSafe;
+    ISafe public councilSafe;
 
-    // the number of votes required from the pdao to pass
-    uint256 public pdaoThreshold;
+    // the number of votes required from the council to pass
+    uint256 public vetoThreshold;
 
-    constructor(IElectionModule _electionSystem, ISafe _pdaoSafe) {
-        electionSystem = _electionSystem;
-        pdaoSafe = _pdaoSafe;
+    constructor(IElectionModule _vetoElectionSystem, ISafe _councilSafe, uint256 initialVetoThreshold) {
+        vetoElectionSystem = _vetoElectionSystem;
+        councilSafe = _councilSafe;
+				vetoThreshold = initialVetoThreshold;
     }
 
-    function setPdaoThreshold(uint256 threshold) external {
-        if (msg.sender != address(pdaoSafe)) {
+    function setVetoThreshold(uint256 threshold) external {
+        if (msg.sender != address(councilSafe)) {
             revert Unauthorized(msg.sender);
         }
 
-        if (threshold > pdaoSafe.getThreshold()) {
-            revert InvalidParameter("threshold", "greater than pdao safe threshold");
+        if (threshold > councilSafe.getThreshold()) {
+            revert InvalidParameter("threshold", "greater than threshold");
         }
 
-        pdaoThreshold = threshold;
+        vetoThreshold = threshold;
 
-        emit PdaoThresholdChanged(threshold);
+        emit VetoThresholdChanged(threshold);
     }
 
     /**
-     * Ensures that the `safe` configured signers includes both the elected members from the election module, as well as the pdao signers.
-     * NOTE: Anyone can call this function, but this function can only set signers to those in the pdao safe and electionSystem. If
+     * Ensures that the `safe` configured signers includes both the elected members from the election module, as well as the council signers.
+     * NOTE: Anyone can call this function, but this function can only set signers to those in the council safe and vetoElectionSystem. If
      * you are a script kitty looking at this function and are wondering, execute this at your own expense :)
      */
     function resetSafeSigners(ISafe targetSafe) external {
         // get the actual signers to set
         (
-            address[] memory electedCouncilSigners,
-            uint256 electedCouncilThreshold,
-            address[] memory pdaoSigners,
-            uint256 pdaoThresh
+            address[] memory vetoSigners,
+            uint256 vetoSignersThreshold,
+            address[] memory councilSigners,
+            uint256 councilThreshold
         ) = getSignerInfo();
 
-        uint256 requiredSigners = electedCouncilThreshold + pdaoThresh;
+        uint256 requiredSigners = vetoSignersThreshold + councilThreshold;
 
         // remove all signers currently on the target safe except one (because gnosis does not allow no signers)
         address[] memory oldSigners = targetSafe.getOwners();
@@ -82,30 +83,30 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
 
         // add new signers to the target safe
         uint256 addedSigners = 0;
-        for (uint256 i = 0; i < pdaoSigners.length; i++) {
-            if (oldSigners.length > 0 && pdaoSigners[i] == oldSigners[0]) {
+        for (uint256 i = 0; i < councilSigners.length; i++) {
+            if (oldSigners.length > 0 && councilSigners[i] == oldSigners[0]) {
                 oldSigners = new address[](0);
             } else {
                 execOnSafe(
                     targetSafe,
                     abi.encodeWithSelector(
                         ISafe.addOwnerWithThreshold.selector,
-                        pdaoSigners[i],
+                        councilSigners[i],
                         requiredSigners < ++addedSigners ? requiredSigners : addedSigners
                     )
                 );
             }
         }
 
-        for (uint256 i = 0; i < electedCouncilSigners.length; i++) {
-            if (oldSigners.length > 0 && electedCouncilSigners[i] == oldSigners[0]) {
+        for (uint256 i = 0; i < vetoSigners.length; i++) {
+            if (oldSigners.length > 0 && vetoSigners[i] == oldSigners[0]) {
                 oldSigners = new address[](0);
-            } else if (!targetSafe.isOwner(electedCouncilSigners[i])) {
+            } else if (!targetSafe.isOwner(vetoSigners[i])) {
                 execOnSafe(
                     targetSafe,
                     abi.encodeWithSelector(
                         ISafe.addOwnerWithThreshold.selector,
-                        electedCouncilSigners[i],
+                        vetoSigners[i],
                         requiredSigners < ++addedSigners ? requiredSigners : addedSigners
                     )
                 );
@@ -115,13 +116,13 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
         if (oldSigners.length > 0) {
             execOnSafe(
                 targetSafe,
-                abi.encodeWithSelector(ISafe.removeOwner.selector, pdaoSigners[0], oldSigners[0], requiredSigners)
+                abi.encodeWithSelector(ISafe.removeOwner.selector, councilSigners[0], oldSigners[0], requiredSigners)
             );
         }
     }
 
     /**
-     * Ensures that a minimum number of pdao signers have signed this txn
+     * Ensures that a minimum number of council signers have signed this txn
      */
     function checkTransaction(
         address to,
@@ -156,14 +157,14 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
         }
 
         (
-            address[] memory electedCouncilSigners,
-            uint256 electedCouncilThreshold,
-            address[] memory pdaoSigners,
-            uint256 pdaoThresh
+            address[] memory vetoSigners,
+            uint256 vetoSignersThreshold,
+            address[] memory councilSigners,
+            uint256 councilThreshold
         ) = getSignerInfo();
 
-        uint256 electedCount = 0;
-        uint256 pdaoCount = 0;
+        uint256 vetoSignersCount = 0;
+        uint256 councilCount = 0;
 
         uint8 v;
         bytes32 r;
@@ -193,19 +194,19 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
                 revert IncorrectSignature(curOwner, v, r, s);
             }
 
-            if (electedCount < electedCouncilSigners.length / 2 + 1) {
-                for (uint256 i = 0; i < electedCouncilSigners.length; i++) {
-                    if (electedCouncilSigners[i] == curOwner) {
-                        electedCount++;
+            if (vetoSignersCount < vetoSigners.length / 2 + 1) {
+                for (uint256 i = 0; i < vetoSigners.length; i++) {
+                    if (vetoSigners[i] == curOwner) {
+                        vetoSignersCount++;
                         break;
                     }
                 }
             }
 
-            if (pdaoCount < pdaoThreshold) {
-                for (uint256 i = 0; i < pdaoSigners.length; i++) {
-                    if (pdaoSigners[i] == curOwner) {
-                        pdaoCount++;
+            if (councilCount < councilThreshold) {
+                for (uint256 i = 0; i < councilSigners.length; i++) {
+                    if (councilSigners[i] == curOwner) {
+                        councilCount++;
                         break;
                     }
                 }
@@ -214,12 +215,12 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
             lastOwner = curOwner;
         }
 
-        if (electedCount < electedCouncilThreshold) {
-            revert InsufficientSigners("council", electedCouncilSigners.length / 2 + 1, electedCount);
+        if (vetoSignersCount < vetoSignersThreshold) {
+            revert InsufficientSigners("council", vetoSignersThreshold, vetoSignersCount);
         }
 
-        if (pdaoCount < pdaoThresh) {
-            revert InsufficientSigners("pdao", pdaoThreshold, pdaoCount);
+        if (councilCount < councilThreshold) {
+            revert InsufficientSigners("council", councilThreshold, councilCount);
         }
     }
 
@@ -246,17 +247,17 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
         internal
         view
         returns (
-            address[] memory electedCouncilSigners,
-            uint256 electedCouncilThreshold,
-            address[] memory pdaoSigners,
-            uint256 pdaoThres
+            address[] memory vetoSigners,
+            uint256 vetoSignersThreshold,
+            address[] memory councilSigners,
+            uint256 councilThres
         )
     {
-        electedCouncilSigners = electionSystem.getCouncilMembers();
-        pdaoSigners = pdaoSafe.getOwners();
+        vetoSigners = vetoElectionSystem.getCouncilMembers();
+        councilSigners = councilSafe.getOwners();
 
-        electedCouncilThreshold = electedCouncilSigners.length / 2 + 1;
-        pdaoThres = pdaoThreshold;
+        vetoSignersThreshold = vetoThreshold;
+        councilThres = councilSigners.length / 2 + 1;
     }
 
     function execOnSafe(ISafe safe, bytes memory call) internal {
