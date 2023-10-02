@@ -4,6 +4,9 @@ version = "0.0.1"
 [setting.safe_package]
 defaultValue = "safe:1.3.0"
 
+[setting.safe_package_preset]
+defaultValue = "main"
+
 [setting.council_safe_address]
 
 [setting.election_module_address]
@@ -11,7 +14,7 @@ defaultValue = "safe:1.3.0"
 [setting.safe_salt]
 
 [setting.initial_veto_signers]
-defaultValue = "0" 
+defaultValue = "0"
 
 [contract.SynthetixSafeModuleRegistration]
 artifact = "SynthetixSafeModuleRegistration"
@@ -21,14 +24,14 @@ artifact = "SynthetixSafeModule"
 args = [
     "<%= settings.election_module_address %>",
     "<%= settings.council_safe_address %>",
-		"<%= settings.initial_veto_signers %>"
+    "<%= settings.initial_veto_signers %>"
 ]
 
 [provision.target_safe]
 source = "<%= settings.safe_package %>"
-targetPreset = "<% settings.safe_slat %>-sc"
+targetPreset = "<%= settings.safe_package_preset %>-sc"
 
 options.salt = "<%= formatBytes32String(settings.safe_salt) %>"
 options.initTo = "<%= contracts.SynthetixSafeModuleRegistration.address %>"
 # setup(address)
-options.initData = "0x66d38203<%= defaultAbiCoder.encode(['address'], [contracts.SynthetixSafeModule.address]).slice(2) %>" 
+options.initData = "0x66d38203<%= defaultAbiCoder.encode(['address'], [contracts.SynthetixSafeModule.address]).slice(2) %>"

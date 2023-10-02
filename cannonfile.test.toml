@@ -28,7 +28,7 @@ artifact = "SynthetixSafeModule"
 args = [
     "<%= imports.election_module.contracts.CoreProxy.address %>",
     "<%= imports.pdao_safe.contracts.Safe.address %>",
-		0
+    0
 ]
 
 [provision.target_safe]
@@ -38,4 +38,4 @@ targetPreset = "<%= settings.safe_package_preset %>-sc"
 options.salt = "<%= formatBytes32String(settings.safe_salt) %>"
 options.initTo = "<%= contracts.SynthetixSafeModuleRegistration.address %>"
 # setup(address)
-options.initData = "0x66d38203<%= defaultAbiCoder.encode(['address'], [contracts.SynthetixSafeModule.address]).slice(2) %>" 
+options.initData = "0x66d38203<%= defaultAbiCoder.encode(['address'], [contracts.SynthetixSafeModule.address]).slice(2) %>"
