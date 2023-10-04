@@ -36,7 +36,7 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
 
     ISafe public councilSafe;
 
-    // the number of votes required from the council to pass
+    // the number of votes required from the vetoElectionSystem to pass
     uint256 public vetoThreshold;
 
     constructor(IElectionModule _vetoElectionSystem, ISafe _councilSafe, uint256 initialVetoThreshold) {
@@ -46,12 +46,12 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
     }
 
     function setVetoThreshold(uint256 threshold) external {
-        if (msg.sender != address(councilSafe)) {
+        if (msg.sender != address(vetoElectionSystem)) {
             revert Unauthorized(msg.sender);
         }
 
-        if (threshold > councilSafe.getThreshold()) {
-            revert InvalidParameter("threshold", "greater than threshold");
+        if (threshold > vetoElectionSystem.getCouncilMembers().length) {
+            revert InvalidParameter("threshold", "greater than council members");
         }
 
         vetoThreshold = threshold;
@@ -194,7 +194,7 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
                 revert IncorrectSignature(curOwner, v, r, s);
             }
 
-            if (vetoSignersCount < vetoSigners.length / 2 + 1) {
+            if (vetoSignersCount < vetoSignersThreshold) {
                 for (uint256 i = 0; i < vetoSigners.length; i++) {
                     if (vetoSigners[i] == curOwner) {
                         vetoSignersCount++;
@@ -203,7 +203,7 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
                 }
             }
 
-            if (councilCount < councilThreshold) {
+            if (councilCount < councilSigners.length / 2 + 1) {
                 for (uint256 i = 0; i < councilSigners.length; i++) {
                     if (councilSigners[i] == curOwner) {
                         councilCount++;
@@ -216,7 +216,7 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
         }
 
         if (vetoSignersCount < vetoSignersThreshold) {
-            revert InsufficientSigners("council", vetoSignersThreshold, vetoSignersCount);
+            revert InsufficientSigners("vetoSigners", vetoSignersThreshold, vetoSignersCount);
         }
 
         if (councilCount < councilThreshold) {
