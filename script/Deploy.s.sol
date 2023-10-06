@@ -23,11 +23,11 @@ contract DummySafe {
 
 contract DeployScript is Script {
     address internal registration;
-    address internal proxySafe;
     address internal dummySafe;
     address internal account;
 
     SafeProxyFactory internal factory = SafeProxyFactory(0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2);
+    address internal singleton = 0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552;
 
     function setUp() public {}
 
@@ -41,7 +41,6 @@ contract DeployScript is Script {
 
         registration = getRegistration();
         dummySafe = getDummySafe();
-        proxySafe = getSafe();
 
         address ccSafe = deploySafeAndModule("CC_COUNCIL_ADDRESS", "CoreContributor", dummySafe, 0);
         address ccTokenSafe = deploySafeAndModule("CC_TOKEN_ADDRESS", "CCToken", dummySafe, 0);
@@ -67,7 +66,7 @@ contract DeployScript is Script {
                 saltName, bytes(envName).length > 0 ? vm.envAddress(envName) : dummySafe, prevSafe, initialVeto
             )
         );
-        return address(createSafe(proxySafe, saltName, module));
+        return address(createSafe(saltName, module));
     }
 
     function getSafe() internal returns (address safe) {
@@ -75,6 +74,7 @@ contract DeployScript is Script {
         safe = computeCreate2Address(0, initCode);
 
         if (address(safe).code.length > 0) {
+            console.log('safe exists');
             return safe;
         }
 
@@ -86,26 +86,28 @@ contract DeployScript is Script {
         dummy = computeCreate2Address(0, initCode);
 
         if (dummy.code.length > 0) {
+            console.log('dummy exists');
             return dummy;
         }
 
         new DummySafe{salt: 0}();
     }
 
-    function getRegistration() internal returns (address safeAddress) {
+    function getRegistration() internal returns (address module) {
         bytes32 initCode = hashInitCode(type(SynthetixSafeModuleRegistration).creationCode);
-        safeAddress = computeCreate2Address(0, initCode);
+        module = computeCreate2Address(0, initCode);
 
-        if (safeAddress.code.length > 0) {
-            return safeAddress;
+        if (module.code.length > 0) {
+            console.log('registration exists');
+            return module;
         }
 
         new SynthetixSafeModuleRegistration{salt: 0}();
     }
 
-    function createSafe(address safeAddress, string memory saltString, address module)
+    function createSafe(string memory saltString, address module)
         internal
-        returns (SafeL2 safe)
+        returns (Safe safe)
     {
         address[] memory owners = new address[](1);
         owners[0] = account;
@@ -122,15 +124,16 @@ contract DeployScript is Script {
             payable(address(0))
         );
 
-        uint256 saltNonce = uint256(keccak256(abi.encodePacked(saltString, module, safeAddress)));
-        bytes32 initHash = hashInitCode(abi.encodePacked(factory.proxyCreationCode(), uint256(uint160(safeAddress))));
-        safe = SafeL2(payable(computeCreate2Address(keccak256(abi.encodePacked(keccak256(data), saltNonce)), initHash, address(factory))));
+        uint256 saltNonce = uint256(keccak256(abi.encodePacked(saltString, module, singleton)));
+        bytes32 initHash = hashInitCode(abi.encodePacked(factory.proxyCreationCode(), uint256(uint160(singleton))));
+        safe = Safe(payable(computeCreate2Address(keccak256(abi.encodePacked(keccak256(data), saltNonce)), initHash, address(factory))));
 
         if (address(safe).code.length > 0) {
+            console.log('safe exists', saltString);
             return safe;
         }
 
-        console.log(saltString, address(factory.createProxyWithNonce(safeAddress, data, uint256(saltNonce))));
+        factory.createProxyWithNonce(singleton, data, uint256(saltNonce));
     }
 
     function createSafeModule(string memory saltString, address electionModule, address safe, uint256 initialVeto)
@@ -143,6 +146,7 @@ contract DeployScript is Script {
         module = SynthetixSafeModule(computeCreate2Address(salt, initCode));
 
         if (address(module).code.length > 0) {
+            console.log('module exists', saltString);
             return module;
         }
 
