@@ -14,9 +14,17 @@ contract DummySafe {
     function getOwners() external pure returns (address[] memory addresses) {
         addresses = new address[](0);
     }
+
+    function getCouncilMembers() external pure returns (address[] memory addresses) {
+        addresses = new address[](0);
+    }
 }
 
 contract DeployScript is Script {
+    address internal registration;
+    address internal proxySafe;
+    address internal dummySafe;
+
     function setUp() public {}
 
     function run() public {
@@ -28,29 +36,31 @@ contract DeployScript is Script {
         address TRADER_COUNCIL_ADDRESS = vm.envAddress("TRADER_COUNCIL_ADDRESS");
         address CC_COUNCIL_ADDRESS = vm.envAddress("CC_COUNCIL_ADDRESS");
 
-        address registration = getRegistration();
-        address dummySafe = getDummySafe();
-        address proxySafe = getSafe();
+        registration = getRegistration();
+        dummySafe = getDummySafe();
+        proxySafe = getSafe();
 
-        SynthetixSafeModule ecosystemModule =
-            createSafeModule("EcosystemModule", ECOSYSTEM_COUNCIL_ADDRESS, dummySafe, 0);
-        SafeL2 ecosystemSafe = createSafe(proxySafe, "EcosystemSafe", address(ecosystemModule), registration);
+        address ccSafe = deploySafeAndModule("CC_COUNCIL_ADDRESS", "CoreContributor", dummySafe, 0);
+        address ecosystemSafe = deploySafeAndModule("ECOSYSTEM_COUNCIL_ADDRESS", "Ecosystem", ccSafe, 0);
+        address traderSafe = deploySafeAndModule("TRADER_COUNCIL_ADDRESS", "Trader", ecosystemSafe, 0);
+        address treasurySafe = deploySafeAndModule("TREASURY_COUNCIL_ADDRESS", "Treasury", traderSafe, 1);
+        address infinexSafe = deploySafeAndModule("", "Infinex", treasurySafe, 0);
 
-        SynthetixSafeModule ccModule =
-            createSafeModule("CCModule", CC_COUNCIL_ADDRESS, address(ecosystemSafe), 0);
-        SafeL2 ccSafe = createSafe(proxySafe, "CCSafe", address(ccModule), registration);
-
-        SynthetixSafeModule traderModule =
-            createSafeModule("TraderModule", TRADER_COUNCIL_ADDRESS, address(ccSafe), 0);
-        SafeL2 traderSafe = createSafe(proxySafe, "TraderSafe", address(traderModule), registration);
-
-        SynthetixSafeModule treasuryModule =
-            createSafeModule("TreasuryModule", TREASURY_COUNCIL_ADDRESS, address(traderSafe), 1);
-        SafeL2 treasurySafe = createSafe(proxySafe, "TreasurySafe", address(treasuryModule), registration);
-
+        console.log("CoreContriubtorSafe", address(ccSafe));
         console.log("TreasurySafe", address(treasurySafe));
+        console.log("InfinexSafe", address(infinexSafe));
 
         vm.stopBroadcast();
+    }
+
+    function deploySafeAndModule(string memory envName, string memory saltName, address prevSafe, uint256 initialVeto)
+        internal
+        returns (address safe)
+    {
+        address module = bytes(envName).length > 0
+            ? address(createSafeModule(saltName, vm.envAddress(envName), prevSafe, initialVeto))
+            : dummySafe;
+        return address(createSafe(proxySafe, "CCSafe", module, registration));
     }
 
     function getSafe() internal returns (address safe) {
@@ -63,7 +73,6 @@ contract DeployScript is Script {
 
         new SafeL2{salt: 0}();
     }
-
 
     function getDummySafe() internal returns (address dummy) {
         bytes32 initCode = hashInitCode(type(DummySafe).creationCode);
@@ -91,11 +100,8 @@ contract DeployScript is Script {
         internal
         returns (SafeL2 safe)
     {
-
         bytes32 salt = keccak256(bytes(saltString));
         safe = SafeL2(payable(Clones.predictDeterministicAddress(safeAddress, salt, CREATE2_FACTORY)));
-
-
 
         if (address(safe).code.length > 0) {
             return safe;
@@ -122,7 +128,6 @@ contract DeployScript is Script {
         internal
         returns (SynthetixSafeModule module)
     {
-
         bytes32 salt = keccak256(bytes(saltString));
         bytes32 initCode =
             hashInitCode(type(SynthetixSafeModule).creationCode, abi.encode(electionModule, safe, initialVeto));
