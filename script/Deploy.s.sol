@@ -3,6 +3,8 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Script.sol";
 
+import "@openzeppelin/contracts/proxy/Clones.sol";
+
 import "safe-contracts/contracts/SafeL2.sol";
 
 import {SynthetixSafeModule, IElectionModule, ISafe} from "../src/SynthetixSafeModule.sol";
@@ -28,14 +30,40 @@ contract DeployScript is Script {
 
         address registration = getRegistration();
         address dummySafe = getDummySafe();
-        address safe =
+        address proxySafe = getSafe();
 
         SynthetixSafeModule ecosystemModule =
             createSafeModule("EcosystemModule", ECOSYSTEM_COUNCIL_ADDRESS, dummySafe, 0);
-        SafeL2 ecosystemSafe = createSafe("EcosystemSafe", address(ecosystemModule), registration);
+        SafeL2 ecosystemSafe = createSafe(proxySafe, "EcosystemSafe", address(ecosystemModule), registration);
+
+        SynthetixSafeModule ccModule =
+            createSafeModule("CCModule", CC_COUNCIL_ADDRESS, address(ecosystemSafe), 0);
+        SafeL2 ccSafe = createSafe(proxySafe, "CCSafe", address(ccModule), registration);
+
+        SynthetixSafeModule traderModule =
+            createSafeModule("TraderModule", TRADER_COUNCIL_ADDRESS, address(ccSafe), 0);
+        SafeL2 traderSafe = createSafe(proxySafe, "TraderSafe", address(traderModule), registration);
+
+        SynthetixSafeModule treasuryModule =
+            createSafeModule("TreasuryModule", TREASURY_COUNCIL_ADDRESS, address(traderSafe), 1);
+        SafeL2 treasurySafe = createSafe(proxySafe, "TreasurySafe", address(treasuryModule), registration);
+
+        console.log("TreasurySafe", address(treasurySafe));
 
         vm.stopBroadcast();
     }
+
+    function getSafe() internal returns (address safe) {
+        bytes32 initCode = hashInitCode(type(SafeL2).creationCode);
+        safe = computeCreate2Address(0, initCode);
+
+        if (address(safe).code.length > 0) {
+            return safe;
+        }
+
+        new SafeL2{salt: 0}();
+    }
+
 
     function getDummySafe() internal returns (address dummy) {
         bytes32 initCode = hashInitCode(type(DummySafe).creationCode);
@@ -59,24 +87,25 @@ contract DeployScript is Script {
         new SynthetixSafeModuleRegistration{salt: 0}();
     }
 
-    function createSafe(string memory saltString, address module, address registration)
+    function createSafe(address safeAddress, string memory saltString, address module, address registration)
         internal
         returns (SafeL2 safe)
     {
+
         bytes32 salt = keccak256(bytes(saltString));
-        bytes32 initCode = hashInitCode(type(SafeL2).creationCode);
-        safe = SafeL2(payable(computeCreate2Address(salt, initCode)));
+        safe = SafeL2(payable(Clones.predictDeterministicAddress(safeAddress, salt, CREATE2_FACTORY)));
+
+
 
         if (address(safe).code.length > 0) {
             return safe;
         }
 
-        new SafeL2{salt: salt}();
+        Clones.cloneDeterministic(safeAddress, salt);
 
         address[] memory owners = new address[](1);
         owners[0] = 0x0000000000000000000000000000000000000010;
 
-        //        console.logBytes(abi.encodePacked(safe.getOwners()));
         safe.setup(
             owners,
             1,
@@ -93,6 +122,7 @@ contract DeployScript is Script {
         internal
         returns (SynthetixSafeModule module)
     {
+
         bytes32 salt = keccak256(bytes(saltString));
         bytes32 initCode =
             hashInitCode(type(SynthetixSafeModule).creationCode, abi.encode(electionModule, safe, initialVeto));
