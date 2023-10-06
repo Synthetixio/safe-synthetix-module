@@ -107,14 +107,6 @@ contract DeployScript is Script {
         internal
         returns (SafeL2 safe)
     {
-        bytes32 salt = keccak256(abi.encodePacked(saltString, module, safeAddress));
-        bytes32 initHash = hashInitCode(abi.encodePacked(type(SafeProxy).creationCode, uint256(uint160(safeAddress))));
-        safe = SafeL2(payable(computeCreate2Address(salt, initHash, address(factory))));
-
-        if (address(safe).code.length > 0) {
-            return safe;
-        }
-
         address[] memory owners = new address[](1);
         owners[0] = account;
 
@@ -130,7 +122,15 @@ contract DeployScript is Script {
             payable(address(0))
         );
 
-        factory.createProxyWithNonce(safeAddress, data, uint256(salt));
+        uint256 saltNonce = uint256(keccak256(abi.encodePacked(saltString, module, safeAddress)));
+        bytes32 initHash = hashInitCode(abi.encodePacked(factory.proxyCreationCode(), uint256(uint160(safeAddress))));
+        safe = SafeL2(payable(computeCreate2Address(keccak256(abi.encodePacked(keccak256(data), saltNonce)), initHash, address(factory))));
+
+        if (address(safe).code.length > 0) {
+            return safe;
+        }
+
+        console.log(saltString, address(factory.createProxyWithNonce(safeAddress, data, uint256(saltNonce))));
     }
 
     function createSafeModule(string memory saltString, address electionModule, address safe, uint256 initialVeto)
