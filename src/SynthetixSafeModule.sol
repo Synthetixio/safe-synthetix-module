@@ -42,7 +42,7 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
     constructor(IElectionModule _vetoElectionSystem, ISafe _councilSafe, uint256 initialVetoThreshold) {
         vetoElectionSystem = _vetoElectionSystem;
         councilSafe = _councilSafe;
-				vetoThreshold = initialVetoThreshold;
+        vetoThreshold = initialVetoThreshold;
     }
 
     function setVetoThreshold(uint256 threshold) external {
