@@ -6,6 +6,7 @@ libs = ['lib']
 fs_permissions = [{ access = "read", path = "./"}]
 
 [rpc_endpoints]
+goerli = "https://goerli.infura.io/v3/${INFURA_API_KEY}"
 optimismGoerli = "https://optimism-goerli.infura.io/v3/${INFURA_API_KEY}"
 optimismMainnet = "https://optimism-mainnet.infura.io/v3/${INFURA_API_KEY}"
 

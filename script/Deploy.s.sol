@@ -6,6 +6,7 @@ import "forge-std/Script.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 
 import "safe-contracts/contracts/SafeL2.sol";
+import "safe-contracts/contracts/proxies/SafeProxyFactory.sol";
 
 import {SynthetixSafeModule, IElectionModule, ISafe} from "../src/SynthetixSafeModule.sol";
 import {SynthetixSafeModuleRegistration} from "../src/SynthetixSafeModuleRegistration.sol";
@@ -24,29 +25,32 @@ contract DeployScript is Script {
     address internal registration;
     address internal proxySafe;
     address internal dummySafe;
+    address internal account;
+
+    SafeProxyFactory internal factory = SafeProxyFactory(0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2);
 
     function setUp() public {}
 
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
+        account = vm.rememberKey(deployerPrivateKey);
 
-        address ECOSYSTEM_COUNCIL_ADDRESS = vm.envAddress("ECOSYSTEM_COUNCIL_ADDRESS");
-        address TREASURY_COUNCIL_ADDRESS = vm.envAddress("TREASURY_COUNCIL_ADDRESS");
-        address TRADER_COUNCIL_ADDRESS = vm.envAddress("TRADER_COUNCIL_ADDRESS");
-        address CC_COUNCIL_ADDRESS = vm.envAddress("CC_COUNCIL_ADDRESS");
+        vm.startBroadcast(account);
+
+        console.log(account);
 
         registration = getRegistration();
         dummySafe = getDummySafe();
         proxySafe = getSafe();
 
         address ccSafe = deploySafeAndModule("CC_COUNCIL_ADDRESS", "CoreContributor", dummySafe, 0);
+        address ccTokenSafe = deploySafeAndModule("CC_TOKEN_ADDRESS", "CCToken", dummySafe, 0);
         address ecosystemSafe = deploySafeAndModule("ECOSYSTEM_COUNCIL_ADDRESS", "Ecosystem", ccSafe, 0);
         address traderSafe = deploySafeAndModule("TRADER_COUNCIL_ADDRESS", "Trader", ecosystemSafe, 0);
         address treasurySafe = deploySafeAndModule("TREASURY_COUNCIL_ADDRESS", "Treasury", traderSafe, 1);
         address infinexSafe = deploySafeAndModule("", "Infinex", treasurySafe, 0);
 
-        console.log("CoreContriubtorSafe", address(ccSafe));
+        console.log("CoreContriubtorSafe", address(ccTokenSafe));
         console.log("TreasurySafe", address(treasurySafe));
         console.log("InfinexSafe", address(infinexSafe));
 
@@ -57,10 +61,13 @@ contract DeployScript is Script {
         internal
         returns (address safe)
     {
-        address module = bytes(envName).length > 0
-            ? address(createSafeModule(saltName, vm.envAddress(envName), prevSafe, initialVeto))
-            : dummySafe;
-        return address(createSafe(proxySafe, "CCSafe", module, registration));
+        console.log("deploying", envName, saltName, "safe");
+        address module = address(
+            createSafeModule(
+                saltName, bytes(envName).length > 0 ? vm.envAddress(envName) : dummySafe, prevSafe, initialVeto
+            )
+        );
+        return address(createSafe(proxySafe, saltName, module));
     }
 
     function getSafe() internal returns (address safe) {
@@ -96,23 +103,23 @@ contract DeployScript is Script {
         new SynthetixSafeModuleRegistration{salt: 0}();
     }
 
-    function createSafe(address safeAddress, string memory saltString, address module, address registration)
+    function createSafe(address safeAddress, string memory saltString, address module)
         internal
         returns (SafeL2 safe)
     {
-        bytes32 salt = keccak256(bytes(saltString));
-        safe = SafeL2(payable(Clones.predictDeterministicAddress(safeAddress, salt, CREATE2_FACTORY)));
+        bytes32 salt = keccak256(abi.encodePacked(saltString, module, safeAddress));
+        bytes32 initHash = hashInitCode(abi.encodePacked(type(SafeProxy).creationCode, uint256(uint160(safeAddress))));
+        safe = SafeL2(payable(computeCreate2Address(salt, initHash, address(factory))));
 
         if (address(safe).code.length > 0) {
             return safe;
         }
 
-        Clones.cloneDeterministic(safeAddress, salt);
-
         address[] memory owners = new address[](1);
-        owners[0] = 0x0000000000000000000000000000000000000010;
+        owners[0] = account;
 
-        safe.setup(
+        bytes memory data = abi.encodeWithSelector(
+            Safe.setup.selector,
             owners,
             1,
             registration,
@@ -122,13 +129,15 @@ contract DeployScript is Script {
             0,
             payable(address(0))
         );
+
+        factory.createProxyWithNonce(safeAddress, data, uint256(salt));
     }
 
     function createSafeModule(string memory saltString, address electionModule, address safe, uint256 initialVeto)
         internal
         returns (SynthetixSafeModule module)
     {
-        bytes32 salt = keccak256(bytes(saltString));
+        bytes32 salt = keccak256(abi.encodePacked(saltString));
         bytes32 initCode =
             hashInitCode(type(SynthetixSafeModule).creationCode, abi.encode(electionModule, safe, initialVeto));
         module = SynthetixSafeModule(computeCreate2Address(salt, initCode));
