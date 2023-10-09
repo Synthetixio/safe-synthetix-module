@@ -17,8 +17,8 @@ contract DeployScript is Script {
     address internal dummySafe;
     address internal account;
 
-    string result;
-    mapping(string => address) register;
+    string internal result;
+    mapping(string => address) internal register;
 
     SafeProxyFactory internal factory = SafeProxyFactory(0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2);
     address internal singleton = 0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552;
@@ -146,7 +146,7 @@ contract DeployScript is Script {
         safe = Safe(payable(computeCreate2Address(keccak256(abi.encodePacked(keccak256(data), saltNonce)), initHash, address(factory))));
 
         result = string(abi.encodePacked(result, saltString, "_SAFE=", vm.toString(address(safe)), "\n"));
-        register[string(abi.encodePacked(saltString, "_SAFE"))] = address(module);
+        register[string(abi.encodePacked(saltString, "_SAFE"))] = address(safe);
 
         if (address(safe).code.length > 0) {
             return safe;
