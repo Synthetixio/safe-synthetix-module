@@ -3,7 +3,7 @@ src = 'src'
 out = 'out'
 libs = ['lib']
 
-fs_permissions = [{ access = "read", path = "./"}]
+fs_permissions = [{ access = "write", path = "./"}]
 
 [rpc_endpoints]
 goerli = "https://goerli.infura.io/v3/${INFURA_API_KEY}"

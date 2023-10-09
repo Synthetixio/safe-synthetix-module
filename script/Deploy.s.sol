@@ -10,50 +10,70 @@ import "safe-contracts/contracts/proxies/SafeProxyFactory.sol";
 
 import {SynthetixSafeModule, IElectionModule, ISafe} from "../src/SynthetixSafeModule.sol";
 import {SynthetixSafeModuleRegistration} from "../src/SynthetixSafeModuleRegistration.sol";
-
-contract DummySafe {
-    function getOwners() external pure returns (address[] memory addresses) {
-        addresses = new address[](0);
-    }
-
-    function getCouncilMembers() external pure returns (address[] memory addresses) {
-        addresses = new address[](0);
-    }
-}
+import "../src/DummySafe.sol";
 
 contract DeployScript is Script {
     address internal registration;
     address internal dummySafe;
     address internal account;
 
+    string result;
+    mapping(string => address) register;
+
     SafeProxyFactory internal factory = SafeProxyFactory(0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2);
     address internal singleton = 0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552;
 
+    struct StoreToJson {
+        address CC_SAFE;
+        address TREASURY_SAFE;
+        address INFINEX_SAFE;
+    }
+
     function setUp() public {}
 
-    function run() public {
+    function run() public virtual {
+        connect();
+        deployAll();
+        disconnect();
+
+        vm.writeFile(string(abi.encodePacked("deployment.", getChain(getChainId()).name, ".txt")), result);
+    }
+
+    function connect() public {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         account = vm.rememberKey(deployerPrivateKey);
 
         vm.startBroadcast(account);
 
-        console.log(account);
+        console.log("deployer", account);
+    }
 
+    function disconnect() public {
+        vm.stopBroadcast();
+    }
+
+    function deployAll() public {
         registration = getRegistration();
         dummySafe = getDummySafe();
 
-        address ccSafe = deploySafeAndModule("CC_COUNCIL_ADDRESS", "CoreContributor", dummySafe, 0);
-        address ccTokenSafe = deploySafeAndModule("CC_TOKEN_ADDRESS", "CCToken", dummySafe, 0);
-        address ecosystemSafe = deploySafeAndModule("ECOSYSTEM_COUNCIL_ADDRESS", "Ecosystem", ccSafe, 0);
-        address traderSafe = deploySafeAndModule("TRADER_COUNCIL_ADDRESS", "Trader", ecosystemSafe, 0);
-        address treasurySafe = deploySafeAndModule("TREASURY_COUNCIL_ADDRESS", "Treasury", traderSafe, 1);
-        address infinexSafe = deploySafeAndModule("", "Infinex", treasurySafe, 0);
+        console.log("DUMMY_SAFE", address(dummySafe));
 
-        console.log("CoreContriubtorSafe", address(ccTokenSafe));
-        console.log("TreasurySafe", address(treasurySafe));
-        console.log("InfinexSafe", address(infinexSafe));
+        deploySafeAndModule("CC_TOKEN", "CC_TOKEN", dummySafe, 0);
 
-        vm.stopBroadcast();
+        address ccSafe = deploySafeAndModule("CORE_CONTRIBUTOR_COUNCIL", "CC", dummySafe, 0);
+        address ecosystemSafe = deploySafeAndModule("ECOSYSTEM_COUNCIL", "ECOSYSTEM", ccSafe, 0);
+        address traderSafe = deploySafeAndModule("TRADER_COUNCIL", "TRADER", ecosystemSafe, 0);
+        address treasurySafe = deploySafeAndModule("TREASURY_COUNCIL", "TREASURY", traderSafe, 1);
+        deploySafeAndModule("", "INFINEX", treasurySafe, 0);
+    }
+
+    function getChainId() private view returns (uint256 chainId) {
+        // Assembly required since `block.chainid` was introduced in 0.8.0.
+        assembly {
+            chainId := chainid()
+        }
+
+        address(this); // Silence warnings in older Solc versions.
     }
 
     function deploySafeAndModule(string memory envName, string memory saltName, address prevSafe, uint256 initialVeto)
@@ -74,7 +94,6 @@ contract DeployScript is Script {
         safe = computeCreate2Address(0, initCode);
 
         if (address(safe).code.length > 0) {
-            console.log('safe exists');
             return safe;
         }
 
@@ -86,7 +105,6 @@ contract DeployScript is Script {
         dummy = computeCreate2Address(0, initCode);
 
         if (dummy.code.length > 0) {
-            console.log('dummy exists');
             return dummy;
         }
 
@@ -98,7 +116,6 @@ contract DeployScript is Script {
         module = computeCreate2Address(0, initCode);
 
         if (module.code.length > 0) {
-            console.log('registration exists');
             return module;
         }
 
@@ -128,8 +145,10 @@ contract DeployScript is Script {
         bytes32 initHash = hashInitCode(abi.encodePacked(factory.proxyCreationCode(), uint256(uint160(singleton))));
         safe = Safe(payable(computeCreate2Address(keccak256(abi.encodePacked(keccak256(data), saltNonce)), initHash, address(factory))));
 
+        result = string(abi.encodePacked(result, saltString, "_SAFE=", vm.toString(address(safe)), "\n"));
+        register[string(abi.encodePacked(saltString, "_SAFE"))] = address(module);
+
         if (address(safe).code.length > 0) {
-            console.log('safe exists', saltString);
             return safe;
         }
 
@@ -145,8 +164,10 @@ contract DeployScript is Script {
             hashInitCode(type(SynthetixSafeModule).creationCode, abi.encode(electionModule, safe, initialVeto));
         module = SynthetixSafeModule(computeCreate2Address(salt, initCode));
 
+        result = string(abi.encodePacked(result, saltString, "_MODULE=", vm.toString(address(module)), "\n"));
+        register[string(abi.encodePacked(saltString, "_MODULE"))] = address(module);
+
         if (address(module).code.length > 0) {
-            console.log('module exists', saltString);
             return module;
         }
 
