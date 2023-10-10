@@ -3,4 +3,5 @@ pragma solidity >=0.7.0 <0.9.0;
 
 interface IOwnableTwoStep {
     function acceptOwnership() external;
+    function owner() external view returns (address);
 }

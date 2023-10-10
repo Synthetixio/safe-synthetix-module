@@ -17,16 +17,23 @@ contract AcceptOwnershipScript is DeployScript {
         acceptOwnership(vm.envAddress("CC_TOKEN"), register["INFINEX_SAFE"]);
         acceptOwnership(vm.envAddress("INVESTOR_TOKEN"), register["TREASURY_SAFE"]);
 
-        acceptOwnership(vm.envAddress("CORE_CONTRIBUTOR_COUNCIL"), register["CC_SAFE"]);
-        acceptOwnership(vm.envAddress("ECOSYSTEM_COUNCIL"), register["CC_SAFE"]);
-        acceptOwnership(vm.envAddress("TRADER_COUNCIL"), register["CC_SAFE"]);
-        acceptOwnership(vm.envAddress("TREASURY_COUNCIL"), register["CC_SAFE"]);
+        acceptOwnership(vm.envAddress("CORE_CONTRIBUTOR_COUNCIL"), register["CC_TOKEN_SAFE"]);
+        acceptOwnership(vm.envAddress("ECOSYSTEM_COUNCIL"), register["CC_TOKEN_SAFE"]);
+        acceptOwnership(vm.envAddress("TRADER_COUNCIL"), register["CC_TOKEN_SAFE"]);
+        acceptOwnership(vm.envAddress("TREASURY_COUNCIL"), register["CC_TOKEN_SAFE"]);
 
         disconnect();
     }
 
     function acceptOwnership(address target, address safe) internal {
         console.log("Accepting Ownership Of", target, "from", safe);
+        address currentOwner = IOwnableTwoStep(target).owner();
+
+        if (target == currentOwner) {
+            console.log("already owner");
+            return;
+        }
+
         Safe(payable(safe)).execTransaction(
             target,
             0,
