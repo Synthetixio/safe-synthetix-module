@@ -53,7 +53,7 @@ contract DeployScript is Script {
         createSafe("CC");
         createSafe("ECOSYSTEM");
         createSafe("TRADER");
-        createSafe("TREASURY_COUNCIL");
+        createSafe("TREASURY");
         createSafe("INFINEX");
     }
 
