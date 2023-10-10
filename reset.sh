@@ -1,2 +1,2 @@
 #!/bin/bash
-forge script script/Reset.s.sol:ResetScript --broadcast --verify -vvvv --rpc-url $NETWORK
+forge script script/ResetModules.s.sol:ResetModulesScript --broadcast --verify -vvvv --rpc-url $NETWORK
