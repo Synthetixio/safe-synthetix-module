@@ -20,7 +20,7 @@ contract ResetModulesScript is DeployScript {
         updateModuleForSafe("ECOSYSTEM", vm.envAddress("ECOSYSTEM_COUNCIL"), register["CC_SAFE"], true);
         updateModuleForSafe("TRADER", vm.envAddress("TRADER_COUNCIL"), register["ECOSYSTEM_SAFE"], true);
         updateModuleForSafe("TREASURY", vm.envAddress("TREASURY_COUNCIL"), register["TRADER_SAFE"], true);
-        updateModuleForSafe("INFINEX", dummySafe, register['TREASURY_SAFE'], true);
+        updateModuleForSafe("INFINEX", dummySafe, register["TREASURY_SAFE"], true);
 
         disconnect();
     }
@@ -47,7 +47,9 @@ contract ResetModulesScript is DeployScript {
         new SynthetixSafeModuleRegistration{salt: 0}();
     }
 
-    function updateModuleForSafe(string memory name, address electionModule, address vetoSafe, bool newVersion) internal {
+    function updateModuleForSafe(string memory name, address electionModule, address vetoSafe, bool newVersion)
+        internal
+    {
         Safe safe = Safe(payable(register[string(abi.encodePacked(name, "_SAFE"))]));
 
         address module = createModule(name, electionModule, vetoSafe, newVersion);
@@ -71,21 +73,19 @@ contract ResetModulesScript is DeployScript {
     }
 
     function createModule(string memory saltString, address electionModule, address safe, bool inversed)
-    internal
-    returns (address module)
+        internal
+        returns (address module)
     {
         bytes32 salt = keccak256(abi.encodePacked(saltString, customSalt));
         if (inversed) {
-            bytes32 initCode =
-                            hashInitCode(type(SynthetixSafeModule).creationCode, abi.encode(electionModule, safe));
+            bytes32 initCode = hashInitCode(type(SynthetixSafeModule).creationCode, abi.encode(electionModule, safe));
             module = computeCreate2Address(salt, initCode);
 
             if (address(module).code.length == 0) {
                 new SynthetixSafeModule{salt: salt}(IElectionModule(electionModule), ISafe(safe));
             }
         } else {
-            bytes32 initCode =
-                            hashInitCode(type(SynthetixSafeModuleOld).creationCode, abi.encode(electionModule, safe));
+            bytes32 initCode = hashInitCode(type(SynthetixSafeModuleOld).creationCode, abi.encode(electionModule, safe));
 
             module = computeCreate2Address(salt, initCode);
 

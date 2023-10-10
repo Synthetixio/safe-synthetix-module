@@ -6,8 +6,7 @@ import "./Deploy.s.sol";
 import "../src/interfaces/IOwnableTwoStep.sol";
 
 contract AcceptOwnershipScript is DeployScript {
-
-    function run() public override virtual {
+    function run() public virtual override {
         connect();
 
         deployAll();

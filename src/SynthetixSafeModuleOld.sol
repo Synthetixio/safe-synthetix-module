@@ -115,7 +115,12 @@ contract SynthetixSafeModuleOld is IGuard, SignatureDecoder {
         if (oldSigners.length > 0) {
             execOnSafe(
                 targetSafe,
-                abi.encodeWithSelector(ISafe.removeOwner.selector, pdaoSigners[0], oldSigners[0], requiredSigners)
+                abi.encodeWithSelector(
+                    ISafe.removeOwner.selector,
+                    pdaoSigners.length > 0 ? pdaoSigners[0] : electedCouncilSigners[0],
+                    oldSigners[0],
+                    requiredSigners
+                )
             );
         }
     }

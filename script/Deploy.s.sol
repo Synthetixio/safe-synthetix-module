@@ -66,28 +66,19 @@ contract DeployScript is Script {
         address(this); // Silence warnings in older Solc versions.
     }
 
-    function createSafe(string memory saltString)
-        internal
-        returns (address safe)
-    {
+    function createSafe(string memory saltString) internal returns (address safe) {
         address[] memory owners = new address[](1);
         owners[0] = account;
 
         bytes memory data = abi.encodeWithSelector(
-            Safe.setup.selector,
-            owners,
-            1,
-            address(0),
-            "",
-            address(0),
-            address(0),
-            0,
-            payable(address(0))
+            Safe.setup.selector, owners, 1, address(0), "", address(0), address(0), 0, payable(address(0))
         );
 
         uint256 saltNonce = uint256(keccak256(abi.encodePacked(saltString, customSalt)));
         bytes32 initHash = hashInitCode(abi.encodePacked(factory.proxyCreationCode(), uint256(uint160(singleton))));
-        safe = payable(computeCreate2Address(keccak256(abi.encodePacked(keccak256(data), saltNonce)), initHash, address(factory)));
+        safe = payable(
+            computeCreate2Address(keccak256(abi.encodePacked(keccak256(data), saltNonce)), initHash, address(factory))
+        );
 
         result = string(abi.encodePacked(result, saltString, "_SAFE=", vm.toString(safe), "\n"));
         register[string(abi.encodePacked(saltString, "_SAFE"))] = safe;
