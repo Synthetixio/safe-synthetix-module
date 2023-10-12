@@ -13,7 +13,7 @@ contract AcceptOwnershipScript is DeployScript {
 
         console.log("using account", account);
 
-        acceptOwnership(vm.envAddress("CC_TOKEN"), register["INFINEX_SAFE"]);
+        acceptOwnership(vm.envAddress("CC_TOKEN"), register["CC_TOKEN_SAFE"]);
         acceptOwnership(vm.envAddress("INVESTOR_TOKEN"), register["TREASURY_SAFE"]);
 
         acceptOwnership(vm.envAddress("CORE_CONTRIBUTOR_COUNCIL"), register["CC_TOKEN_SAFE"]);
