@@ -256,7 +256,7 @@ contract SynthetixSafeModuleOld is IGuard, SignatureDecoder {
         electedCouncilSigners = electionSystem.getCouncilMembers();
         pdaoSigners = pdaoSafe.getOwners();
 
-        electedCouncilThreshold = electedCouncilSigners.length / 2 + 1;
+        electedCouncilThreshold = electedCouncilSigners.length == 0 ? 0 : electedCouncilSigners.length / 2 + 1;
         pdaoThres = pdaoThreshold;
     }
 

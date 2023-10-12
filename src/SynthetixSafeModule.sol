@@ -241,7 +241,7 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
 
         // if there are no signers then do not enforce a veto threshold
         vetoSignersThreshold = vetoSigners.length == 0 ? 0 : 1;
-        councilThres = councilSigners.length / 2 + 1;
+        councilThres = councilSigners.length == 0 ? 0 : councilSigners.length / 2 + 1;
     }
 
     function execOnSafe(ISafe safe, bytes memory call) internal {
