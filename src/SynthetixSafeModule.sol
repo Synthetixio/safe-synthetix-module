@@ -95,12 +95,17 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
             }
         }
 
+        if (vetoSigners.length == 0 && councilSigners.length == 0) {
+            // add a dead wallet so that there is at least one signer
+            execOnSafe(targetSafe, abi.encodeWithSelector(ISafe.addOwnerWithThreshold.selector, address(0x2), 1));
+        }
+
         if (oldSigners.length > 0) {
             execOnSafe(
                 targetSafe,
                 abi.encodeWithSelector(
                     ISafe.removeOwner.selector,
-                    pdaoSigners.length > 0 ? pdaoSigners[0] : electedCouncilSigners[0],
+                    address(0x1), // SENTINEL_OWNERS
                     oldSigners[0],
                     requiredSigners
                 )
