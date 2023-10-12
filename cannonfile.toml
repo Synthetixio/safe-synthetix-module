@@ -23,8 +23,7 @@ artifact = "SynthetixSafeModuleRegistration"
 artifact = "SynthetixSafeModule"
 args = [
     "<%= settings.election_module_address %>",
-    "<%= settings.council_safe_address %>",
-    "<%= settings.initial_veto_signers %>"
+    "<%= settings.council_safe_address %>"
 ]
 
 [provision.target_safe]
