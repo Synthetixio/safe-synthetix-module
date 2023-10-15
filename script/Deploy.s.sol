@@ -17,7 +17,7 @@ contract DeployScript is Script {
     address internal account;
 
     // TODO change this to 0 when in prod
-    uint256 internal customSalt = 4;
+    uint256 internal customSalt = 0;
     string internal result;
 
     mapping(string => address) internal register;
