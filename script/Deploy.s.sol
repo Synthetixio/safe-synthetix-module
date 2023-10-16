@@ -22,8 +22,8 @@ contract DeployScript is Script {
 
     mapping(string => address) internal register;
 
-    SafeProxyFactory internal factory = SafeProxyFactory(0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2);
-    address internal singleton = 0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552;
+    SafeProxyFactory internal factory = SafeProxyFactory(0xC22834581EbC8527d974F8a1c97E1bEA4EF910BC);
+    address internal singleton = 0xfb1bffC9d739B8D520DaF37dF666da4C687191EA;
 
     function setUp() public {}
 
