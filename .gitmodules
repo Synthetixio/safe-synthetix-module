@@ -5,3 +5,9 @@
 [submodule "lib/cannon-std"]
 	path = lib/cannon-std
 	url = https://github.com/usecannon/cannon-std
+[submodule "lib/safe-contracts"]
+	path = lib/safe-contracts
+	url = https://github.com/safe-global/safe-contracts
+[submodule "lib/openzeppelin-contracts"]
+	path = lib/openzeppelin-contracts
+	url = https://github.com/openzeppelin/openzeppelin-contracts

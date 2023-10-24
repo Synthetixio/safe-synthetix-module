@@ -2,7 +2,17 @@
 src = 'src'
 out = 'out'
 libs = ['lib']
+solc = "0.8.13"
 
-fs_permissions = [{ access = "read", path = "./"}]
+fs_permissions = [{ access = "read-write", path = "./"}]
+
+[rpc_endpoints]
+goerli = "https://goerli.infura.io/v3/${INFURA_API_KEY}"
+optimismGoerli = "https://optimism-goerli.infura.io/v3/${INFURA_API_KEY}"
+optimismMainnet = "https://optimism-mainnet.infura.io/v3/${INFURA_API_KEY}"
+
+[etherscan]
+goerli = { key = "${ETHERSCAN_API_KEY}" }
+mainnet = { key = "${ETHERSCAN_API_KEY}" }
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config

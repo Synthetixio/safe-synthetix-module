@@ -27,8 +27,7 @@ artifact = "SynthetixSafeModuleRegistration"
 artifact = "SynthetixSafeModule"
 args = [
     "<%= imports.election_module.contracts.CoreProxy.address %>",
-    "<%= imports.pdao_safe.contracts.Safe.address %>",
-    0
+    "<%= imports.pdao_safe.contracts.Safe.address %>"
 ]
 
 [provision.target_safe]

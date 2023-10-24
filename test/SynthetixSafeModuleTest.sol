@@ -27,29 +27,6 @@ contract SynthetixSafeModuleTest is Test {
         assert(safe.isModuleEnabled(address(module)));
     }
 
-    function testFailSetVetoThresholdRequiresOwner() public {
-        module.setVetoThreshold(1);
-    }
-
-    function testFailSetVetoThresholdTooHigh() public {
-        vm.startPrank(address(pdaoSafe));
-        module.setVetoThreshold(100);
-        vm.stopPrank();
-    }
-
-    function testSetVetoThreshold() public {
-        vm.startPrank(address(pdaoSafe));
-        vm.expectEmit();
-
-        // We emit the event we expect to see.
-        emit VetoThresholdChanged(1);
-
-        module.setVetoThreshold(1);
-        vm.stopPrank();
-
-        assertEq(module.vetoThreshold(), 1);
-    }
-
     function testResetSafeSigners(address pdaoStart, address councilStart, uint256 pdaoCount, uint256 councilCount)
         public
     {
@@ -89,7 +66,7 @@ contract SynthetixSafeModuleTest is Test {
         }
 
         // assert that the correct number of signers are required
-        assertEq(safe.getThreshold(), pdaoCount / 2 + 1 + module.vetoThreshold());
+        assertEq(safe.getThreshold(), pdaoCount / 2 + 1 + 1);
     }
 
     function testCheckTransactionFull() public {
