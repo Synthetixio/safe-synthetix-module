@@ -134,7 +134,7 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
         address gasToken,
         address payable refundReceiver,
         bytes memory signatures,
-        address msgSender
+        address
     ) external view {
         bytes memory txHashData;
         {
@@ -176,8 +176,9 @@ contract SynthetixSafeModule is IGuard, SignatureDecoder {
             if (v == 0) {
                 revert ContractSignaturesUnsupported();
             } else if (v == 1) {
-                // v ==1 means that the sender is approving the txn, or its an approvedHash (which we are not going to deal with here)
-                curOwner = msgSender;
+                // v == 1 means that the sender is approving the txn, or its an approvedHash
+								// in either case, safe has already verified `r` is valid so we just need to record the value inside here
+                curOwner = address(uint160(uint256(r)));
             } else if (v > 30) {
                 // To support eth_sign and similar we adjust v and hash the transferHashData with the Ethereum message prefix before applying ecrecover
                 curOwner = ecrecover(
